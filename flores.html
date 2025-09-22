@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Flores Amarillas - Animación</title>
+  <style>
+    :root{
+      --bg: radial-gradient(ellipse at top, #fff9e6 0%, #f3f0e6 40%, #e9f7ff 100%);
+    }
+    html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{
+      background: var(--bg);
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    /* stage */
+    .garden{
+      position:relative;
+      width:100vw;
+      height:100vh;
+      overflow:hidden;
+      pointer-events:none; /* deja que botones funcionen si los pones encima */
+    }
+
+    /* cada flor (contenedor) */
+    .flower{
+      position:absolute;
+      width:64px;
+      height:64px;
+      transform-origin:50% 50%;
+      will-change:transform,opacity;
+      animation: floatDown linear forwards;
+    }
+
+    /* animación de caída: empieza arriba (translateY(-120%)) y acaba abajo (translateY(120vh+)) */
+    @keyframes floatDown{
+      0%{transform: translateY(-20vh) rotate(0deg) scale(0.8); opacity:0}
+      10%{opacity:1}
+      50%{transform: translateY(50vh) rotate(180deg) scale(1)}
+      100%{transform: translateY(120vh) rotate(360deg) scale(0.9); opacity:0}
+    }
+
+    /* suavizado y leve oscilación lateral para cada flor */
+    .sway{animation-name: sway; animation-duration:6s; animation-iteration-count:infinite; animation-timing-function:ease-in-out}
+    @keyframes sway{
+      0%{transform: translateX(0)}
+      50%{transform: translateX(18px)}
+      100%{transform: translateX(0)}
+    }
+
+    /* estilo del botón (opcional) */
+    .controls{
+      position:fixed; left:12px; top:12px; z-index:1000; pointer-events:auto;
+      display:flex; gap:8px; align-items:center;
+    }
+    .btn{
+      background: #ffd54a; border: none; padding:10px 14px; border-radius:12px; font-weight:700; box-shadow:0 6px 14px rgba(0,0,0,0.12);
+      cursor:pointer;
+    }
+    .btn:active{transform:translateY(1px)}
+
+    /* centro con mensaje pequeño */
+    .center-note{
+      position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:rgba(255,255,255,0.8); padding:8px 12px; border-radius:999px; font-weight:600; pointer-events:auto;
+      box-shadow:0 6px 12px rgba(0,0,0,0.08);
+    }
+
+    /* pequeño ajuste responsive */
+    @media (max-width:480px){
+      .flower{width:48px;height:48px}
+    }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <button id="more" class="btn">+ Más flores</button>
+    <button id="burst" class="btn">Lluvia rápida</button>
+  </div>
+
+  <div class="garden" id="garden" aria-hidden="true"></div>
+
+  <div class="center-note">Flores amarillas ✿ — guarda esta página y ábrela para ver la animación</div>
+
+  <script>
+    // SVG de una flor amarilla simple (pétalos + centro)
+    const flowerSVG = `
+    <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+      <defs>
+        <radialGradient id="g1" cx="40%" cy="30%">
+          <stop offset="0%" stop-color="#fff7a8" />
+          <stop offset="100%" stop-color="#ffd23f" />
+        </radialGradient>
+        <radialGradient id="g2" cx="40%" cy="40%">
+          <stop offset="0%" stop-color="#ffe6a7" />
+          <stop offset="100%" stop-color="#ffb400" />
+        </radialGradient>
+      </defs>
+      <!-- pétalos -->
+      <g transform="translate(60 60)">
+        <g fill="url(#g1)">
+          <ellipse rx="18" ry="34" transform="rotate(0) translate(0 -40)" />
+          <ellipse rx="18" ry="34" transform="rotate(45) translate(0 -40)" />
+          <ellipse rx="18" ry="34" transform="rotate(90) translate(0 -40)" />
+          <ellipse rx="18" ry="34" transform="rotate(135) translate(0 -40)" />
+          <ellipse rx="18" ry="34" transform="rotate(180) translate(0 -40)" />
+          <ellipse rx="18" ry="34" transform="rotate(225) translate(0 -40)" />
+          <ellipse rx="18" ry="34" transform="rotate(270) translate(0 -40)" />
+          <ellipse rx="18" ry="34" transform="rotate(315) translate(0 -40)" />
+        </g>
+        <!-- centro -->
+        <circle r="18" fill="url(#g2)" stroke="#c07a00" stroke-width="1.5" />
+      </g>
+    </svg>
+    `;
+
+    const garden = document.getElementById('garden');
+
+    // genera una flor DOM con posiciones y animaciones aleatorias
+    function createFlower(opts={}){
+      const el = document.createElement('div');
+      el.className = 'flower';
+
+      // tamaño aleatorio
+      const size = (opts.size || (48 + Math.random()*48));
+      el.style.width = size + 'px';
+      el.style.height = size + 'px';
+
+      // posición horizontal aleatoria (empieza ligeramente fuera del área para más naturalidad)
+      const x = Math.random()*110; // en vw porcentual
+      el.style.left = `calc(${x}vw - ${size/2}px)`;
+
+      // rotación inicial aleatoria
+      const rot = Math.floor(Math.random()*360);
+      el.style.transform = `rotate(${rot}deg)`;
+
+      // duración de la caída (más grande -> cae más lento)
+      const duration = (5 + Math.random()*8); // segundos
+      el.style.animationDuration = `${duration}s`;
+
+      // retraso para escalonar
+      const delay = (opts.delay !== undefined) ? opts.delay : (Math.random()*3);
+      el.style.animationDelay = `${delay}s`;
+
+      // añade pequeña oscilación con duración variable
+      if(Math.random() > 0.4) el.classList.add('sway');
+      el.style.opacity = 0;
+
+      // insertar SVG
+      el.innerHTML = flowerSVG;
+
+      // ligera variación de escala y giro continuo en el interior para dar vida
+      el.querySelector('svg').style.transition = 'transform 1s linear';
+
+      garden.appendChild(el);
+
+      // eliminar del DOM cuando termine la animación
+      const totalLife = (duration + delay + 0.5) * 1000;
+      setTimeout(()=>{
+        if(el && el.parentNode) el.parentNode.removeChild(el);
+      }, totalLife);
+
+      return el;
+    }
+
+    // lluvia inicial
+    function initialRain(count=18){
+      for(let i=0;i<count;i++){
+        // escalonar los delays para que no caigan todas a la vez
+        createFlower({delay: Math.random()*3, size: 36 + Math.random()*60});
+      }
+    }
+
+    // botón para más flores
+    document.getElementById('more').addEventListener('click', ()=>{
+      for(let i=0;i<8;i++) createFlower({delay: Math.random()*0.5, size: 32 + Math.random()*56});
+    });
+
+    // lluvia rápida
+    document.getElementById('burst').addEventListener('click', ()=>{
+      for(let i=0;i<40;i++) createFlower({delay: Math.random()*2, size: 28 + Math.random()*72});
+    });
+
+    // genera nuevas flores continuamente (cada poco tiempo cae alguna)
+    let autoTicker = setInterval(()=>{
+      // probabilidad de 60% de crear 1 flor cada 700ms
+      if(Math.random() < 0.6) createFlower({delay:0, size: 36 + Math.random()*48});
+    },700);
+
+    
+    initialRain(22);
+
+    
+    if(navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2){
+      clearInterval(autoTicker);
+    }
+
+    
+    window.addEventListener('keydown', (e)=>{
+      if(e.key.toLowerCase()==='p'){
+        document.querySelectorAll('.flower').forEach(f=>{
+          f.style.animationPlayState = (f.style.animationPlayState === 'paused') ? 'running' : 'paused';
+        });
+      }
+    });
+  </script>
+</body>
+</html>
